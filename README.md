@@ -1,183 +1,154 @@
-# House Price Prediction — End-to-End ML Web App
+🏠 House Price Prediction — End-to-End ML Web App
+An end-to-end Machine Learning web application that predicts house prices in India based on property features such as location, carpet area, number of bathrooms, furnishing status, and more.
 
-Predicts Indian property prices from listing details (location, area, floor,
-furnishing, etc.) using a scikit-learn model served through a FastAPI backend,
-with a React + TypeScript frontend for entering details and viewing the result.
+The project covers the full ML product lifecycle: data cleaning → model training → API → frontend.
 
-## Overview
-
-- **Dataset:** [House Price by Juhi Bhojani](https://www.kaggle.com/datasets/juhibhojani/house-price) (Kaggle, ~187k rows)
-- **Notebook:** cleans the data, trains/evaluates Linear Regression and Random
-  Forest, and exports the winning pipeline as `house_price.pkl`
-- **Backend:** FastAPI service that loads the pipeline and exposes `/predict`
-- **Frontend:** React form that collects property details and shows the
-  predicted price
-
-## Architecture
-
-```
-Browser (React form)
-      │  POST /predict { location, carpet_area_sqft, ... }
-      ▼
-FastAPI backend  ──loads──▶  models/house_price.pkl (sklearn Pipeline)
-      │  { predicted_price }
-      ▼
-Browser (Result page)
-```
-
-## Tech stack
-
-| Layer      | Tech                                             |
-|------------|---------------------------------------------------|
-| Modeling   | pandas, scikit-learn (Pipeline + ColumnTransformer) |
-| Backend    | FastAPI, Pydantic, Uvicorn                         |
-| Frontend   | React 19, TypeScript, Vite, React Router           |
-
-## Project structure
-
-```
+📐 Architecture
+┌─────────────────┐        HTTP POST /predict        ┌──────────────────┐        joblib.load()        ┌──────────────────┐
+│   React Frontend │  ─────────────────────────────▶  │  FastAPI Backend  │  ───────────────────────▶  │  Trained Pipeline │
+│  (Vite + TS)      │  ◀─────────────────────────────  │  (Python)          │  ◀───────────────────────  │  (house_price.pkl)│
+│  localhost:5173   │        JSON: predicted_price      │  localhost:8000    │        prediction            │  scikit-learn      │
+└─────────────────┘                                    └──────────────────┘                              └──────────────────┘
+User fills the form on the React frontend.
+Frontend sends a POST /predict request to the FastAPI backend.
+Backend converts the request into a one-row DataFrame and runs it through the trained scikit-learn pipeline.
+Backend returns the predicted price as JSON.
+Frontend displays the formatted price (₹ in Lac/Cr) on the result page.
+🧰 Tech Stack
+Layer	Technology
+Data & Modeling	Python, Pandas, NumPy, Scikit-learn, Jupyter
+Backend	FastAPI, Pydantic, Uvicorn, Joblib
+Frontend	React, TypeScript, Vite, React Router
+Tooling	Git, GitHub, Pytest
+📁 Project Structure
+house-price-project/
 ├── notebooks/
-│   └── house_price_model.ipynb   # data cleaning, EDA, training, export
+│   ├── house_price_model.ipynb   # Data cleaning, EDA, training, evaluation, export
+│   └── locations.json            # Exported list of allowed locations
+│
 ├── backend/
 │   ├── app/
-│   │   ├── main.py               # FastAPI app, CORS, model loaded at startup
-│   │   ├── api/routes/prediction.py
-│   │   ├── core/config.py
-│   │   ├── schemas/prediction.py
-│   │   ├── services/preprocessing.py
-│   │   ├── services/inference.py
-│   │   └── utils/logging_config.py
-│   ├── models/                   # ← put your house_price.pkl + locations.json here
+│   │   ├── main.py                       # FastAPI app, CORS, model loaded at startup
+│   │   ├── api/routes/prediction.py      # GET /health, POST /predict
+│   │   ├── schemas/prediction.py         # PredictionRequest / PredictionResponse
+│   │   └── services/
+│   │       ├── preprocessing.py          # Request → one-row DataFrame
+│   │       └── inference.py              # predict_price()
+│   ├── models/house_price.pkl
 │   ├── tests/test_prediction.py
-│   ├── requirements.txt
-│   ├── .env.example
-│   └── Dockerfile
+│   └── requirements.txt
+│
 └── frontend/
     ├── src/
-    │   ├── api/predictionClient.ts
+    │   ├── api/predictionClient.ts       # fetch wrapper (uses VITE_API_BASE_URL)
     │   ├── components/PredictionForm.tsx
     │   ├── pages/HomePage.tsx | ResultPage.tsx | NotFoundPage.tsx
-    │   ├── types/prediction.ts
-    │   └── App.tsx
-    ├── public/                   # ← put your locations.json here too
-    └── .env.example
-```
+    │   └── types/prediction.ts
+    └── public/locations.json
+📊 Dataset
+House Price Dataset by Juhi Bhojani (Kaggle) — ~187,000 real property listings from India.
 
-## Dataset
+Download it before running the notebook:
 
-Download `house_prices.csv` from Kaggle and place it in `notebooks/data/`:
+Option A — Manual: download from the link above, unzip, and place the CSV in notebooks/data/.
 
-```bash
+Option B — Kaggle CLI:
+
 pip install kaggle
-# Get your API token: Kaggle → Settings → API → "Create New Token"
+# Place your kaggle.json token in ~/.kaggle/ (or C:\Users\<you>\.kaggle\ on Windows)
 kaggle datasets download -d juhibhojani/house-price -p notebooks/data --unzip
-```
+⚠️ The raw CSV is not committed to this repo (it's large and excluded via .gitignore). You must download it yourself before re-running the notebook.
 
-## Setup
-
-### 1. Train the model (or reuse your existing notebook output)
-
-Run `notebooks/house_price_model.ipynb` top to bottom. It exports:
-- `house_price.pkl` — the fitted sklearn Pipeline
-- `locations.json` — the list of grouped location values used during training
-
-Copy both into `backend/models/`, and copy `locations.json` into
-`frontend/public/` as well (the frontend fetches it to populate the location
-dropdown).
-
-### 2. Backend
-
-```bash
+⚙️ Setup & Run
+1. Backend (FastAPI)
 cd backend
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+source .venv/bin/activate      # macOS/Linux
+# .venv\Scripts\activate       # Windows
+
 pip install -r requirements.txt
-cp .env.example .env
 uvicorn app.main:app --reload
-# → http://localhost:8000/docs
-```
+Runs at: http://127.0.0.1:8000 Interactive docs: http://127.0.0.1:8000/docs
 
 Run tests:
 
-```bash
-PYTHONPATH=. pytest -q
-```
-
-### 3. Frontend
-
-```bash
+pytest -v
+2. Frontend (React + Vite)
 cd frontend
 npm install
-cp .env.example .env
 npm run dev
-# → http://localhost:5173
-```
+Runs at: http://localhost:5173
 
-## Environment variables
+⚠️ Both backend and frontend must be running at the same time for the form to work.
 
-**backend/.env**
+🔑 Environment Variables
+frontend/.env
 
-| Variable         | Default                          | Description                     |
-|------------------|-----------------------------------|----------------------------------|
-| `MODEL_PATH`     | `models/house_price.pkl`         | Path to the pickled pipeline     |
-| `LOCATIONS_PATH` | `models/locations.json`          | Path to allowed locations list   |
-| `CORS_ORIGINS`   | `["http://localhost:5173"]`      | Allowed frontend origins         |
-| `LOG_LEVEL`      | `INFO`                            | Logging verbosity                |
+Variable	Description	Example
+VITE_API_BASE_URL	Base URL of the FastAPI backend	http://localhost:8000
+A .env.example is provided in frontend/ as a template.
 
-**frontend/.env**
+🔌 API Reference
+GET /health
+Health check.
 
-| Variable              | Default                  | Description         |
-|-----------------------|---------------------------|----------------------|
-| `VITE_API_BASE_URL`   | `http://localhost:8000`  | Backend base URL     |
+Response
 
-## API reference
-
-### `GET /health`
-
-```json
 { "status": "ok" }
-```
+POST /predict
+Predicts the house price from property features.
 
-### `POST /predict`
+Request body
 
-Request:
+{
+  "location": "Whitefield",
+  "carpet_area_sqft": 1200,
+  "floor_num": 3,
+  "bathroom": 2,
+  "balcony": 1,
+  "furnishing": "Semi-Furnished",
+  "transaction": "Resale",
+  "ownership": "Freehold",
+  "facing": "East"
+}
+Response
 
-```bash
-curl -X POST http://localhost:8000/predict \
+{ "predicted_price": 4500000.0 }
+Example cURL
+
+curl -X POST http://127.0.0.1:8000/predict \
   -H "Content-Type: application/json" \
   -d '{
-    "location": "thane",
-    "carpet_area_sqft": 750,
+    "location": "Whitefield",
+    "carpet_area_sqft": 1200,
     "floor_num": 3,
-    "bathroom_num": 2,
-    "balcony_num": 1,
+    "bathroom": 2,
+    "balcony": 1,
     "furnishing": "Semi-Furnished",
     "transaction": "Resale",
     "ownership": "Freehold",
     "facing": "East"
   }'
-```
+📈 Model Performance
+Trained and compared Linear Regression (baseline) and Random Forest Regressor on an 80/20 train/test split.
 
-Response:
+Model metrics (test set)
+Model	MAE	RMSE	R²
+Linear Regression	4,521,930	8,433,180	0.6191
+Random Forest	1,284,225	5,534,014	0.8360
+📌 Fill in the table above with the numbers printed by the mean_absolute_error, root_mean_squared_error, and r2_score cell in notebooks/house_price_model.ipynb (section 2.5 — Evaluate).
 
-```json
-{ "predicted_price": 6997639.27 }
-```
+Winning model: Random Forest Regressor was chosen because it captured non-linear relationships between features (e.g. location, area) and price better than the linear baseline, resulting in lower error and higher R² on the test set.
 
-## Model metrics (test set)
+⚠️ Version pinning: this model was trained with scikit-learn==1.7.2. The exact same version is pinned in backend/requirements.txt — a mismatch can cause the pickle to fail loading correctly.
 
-| Model              | MAE        | RMSE       | R²     |
-|---------------------|-----------|------------|--------|
-| Linear Regression   | 4,521,930 | 8,433,180  | 0.6191 |
-| **Random Forest**   | **1,284,225** | **5,534,014** | **0.8360** |
+🖼️ Screenshots
+📌 Add screenshots here once you've verified the app runs end-to-end. Example:
 
-Random Forest was selected for deployment — it captures the non-linear
-relationship between area/location/features and price much better than a
-linear model.
+![Home page](docs/screenshots/home.png) ![Result page](docs/screenshots/result.png)
 
-## Notes
-
-- The exported pipeline was trained with **scikit-learn 1.7.2** — this is
-  pinned in `backend/requirements.txt` so the pickle loads correctly.
-- The raw dataset CSV is not committed to this repository (see `.gitignore`);
-  download it via the Kaggle CLI command above.
+✅ Verified End-to-End
+ pytest -v passes all tests in backend/
+ Manually tested: submitted the form at http://localhost:5173 and received a real predicted price from http://127.0.0.1:8000
+👤 Authors
+ Zeina Mohammed Ozoris Mohammed  & Doaa Gamal Mohamed Gharib 
