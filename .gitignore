@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Env files
+.env
+*.log
+
+# Raw dataset (download via Kaggle, see README)
+notebooks/data/*.csv
+
+# OS
+.DS_Store
